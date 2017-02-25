@@ -1,0 +1,113 @@
+template:
+  common:
+    -
+      option: DirectoryIndex
+      value: index.html index.php
+    -
+      option: ServerName
+      #value: 192.168.18.99:80
+      value: test.test
+    -
+      option: NameVirtualHost
+      value: '*:80'
+    -
+      option: DocumentRoot
+      value: '"/var/www/html"'
+    -
+      option: ServerTokens
+      value: OS
+    -
+      option: ServerRoot
+      value: '"/etc/httpd"'
+  dirs:
+    -
+      path: '"/var/www/html/bbs/"'
+      options:
+        -
+          {option: Options, value: FollowSymLinks}
+        -
+          {option: AllowOverride, value: None}
+        -
+          {option: Order, value: "allow,deny"}
+        -
+          {option: allow from, value: 192.168.18.0/24}
+        -
+          {option: deny from, value: 192.168.18.2}
+    -
+      path: '"/var/www/html/sec/"'
+      options:
+        -
+          {option: Options, value: FollowSymLinks}
+        -
+          {option: AllowOverride, value: None}
+        -
+          {option: Order, value: "allow,deny"}
+        -
+          {option: allow from, value: 192.168.18.0/24}
+        -
+          {option: deny from, value: 192.168.18.2}
+        -
+          {option: authtype, value: basic}
+        -
+          {option: authname, value: '"Please input "'}
+        -
+          {option: authuserfile, value: /etc/httpd/conf/passwd.secret}
+        -
+          {option: require, value: valid-user}
+
+  listen:
+    #[80,8000,8888]
+    [80]
+  virtualhost:
+    -
+      host: "*:80"
+      options:
+        -
+          option: ServerName
+          value: www.a.com
+        -
+          option: DocumentRoot
+          value: /var/www/html/8000/
+    -
+      host: "*:80"
+      options:
+        -
+          option: ServerName
+          value: www.b.com
+        -
+          option: DocumentRoot
+          value: /var/www/html/8888/
+
+
+  ifmods:
+      -
+        modlist:
+          -
+            mod_negotiation.c
+          -
+            mod_include.c
+        dirs:
+          -
+            path: '"/abc/defg"'
+            options:
+              -
+                option: Options
+                value: Indexes FollowSymLinks
+        options:
+          -
+            option: StartServers
+            value: 8
+          -
+            option: MinSpareServers
+            value: 5
+  loadmods:
+    -
+      name: auth_basic_module
+      path: modules/mod_auth_basic.so
+    -
+      name: auth_digest_module
+      path: modules/mod_auth_digest.so
+
+
+
+

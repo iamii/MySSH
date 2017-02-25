@@ -1,0 +1,19 @@
+dirs:
+  -
+    path: /tmp
+    clients:
+      -
+        ip_range: '*'
+        options: ro
+      #-
+      #  ip_range: 192.168.1.0/24
+      #  options: rw,sync,root_squash
+  -
+    path: /etc
+    clients:
+      -
+        ip_range: '192.168.18.24'
+        options: rw
+      #-
+      #  ip_range: 192.168.1.99
+      #  options: rw,async,root_squash
