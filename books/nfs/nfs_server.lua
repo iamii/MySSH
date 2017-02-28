@@ -8,11 +8,11 @@
 -- HOST变量为playlist传递过来
 -- 此文件所对应的SSHCLIENT指针,无须定义
 
-template = [[ {{range .dirs -}}
+local template = [[ {{range .dirs -}}
 {{.path}} {{ range .clients }} {{.ip_range}}({{.options}}) {{ end }}
 {{ end -}} ]]
 
-vars = {
+local vars = {
     dirs = {
         { path = "/tmp", clients = {
             {ip_range = "*", options = "rw"}}},
@@ -21,13 +21,13 @@ vars = {
     }
 }
 
-out = BUFFER()
+local out = BUFFER()
 
 HOST:Config(template, vars, out)
 
 -- print(out)
 
-CMDS = {
+local CMDS = {
     "service iptables stop",
     "yum -y install nfs-utils-* portmap-*",
     "echo -e '"..out:String().."' > /etc/exports",
@@ -35,7 +35,7 @@ CMDS = {
     "showmount -e 127.0.0.1",
 }
 
-err = HOST:Cmd(CMDS)
+local err = HOST:Cmd(CMDS)
 
 if err.Msg.Code ~= -1 then
     local msg = { dst = "s2", info = { key = "IP", value = HOST.Ip } }

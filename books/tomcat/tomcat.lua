@@ -49,12 +49,7 @@ function tomcat:install()
 
     if not self:installed(self.CATALINA_HOME) then
         -- 上传文件
-        local lpath
-        if os.getenv("OS") == "Windows_NT" then
-            lpath = [[D:\Documents\downloads\]]
-        else
-            lpath = [[/home/iaai/Downloads/]]
-        end
+        local lpath = GetLocalPath()
 
         local path = string.match(self.CATALINA_HOME, "/%w+/%w+/")
         -- print(path)

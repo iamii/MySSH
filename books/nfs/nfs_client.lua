@@ -14,14 +14,14 @@ HOST:ExecCmd("ifconfig eth0", 0)
 
 HOST:Cmd{"yum install showmount -y"}
 
-msg = {
+local msg = {
     src = "s1",
 }
-getmsg = HOST:Wait(msg)
+local getmsg = HOST:Wait(msg)
 
-nfs_server_ip = getmsg.Msg.info.value
+local nfs_server_ip = getmsg.Msg.info.value
 
-CMDS = {
+local CMDS = {
     "showmount -e "..nfs_server_ip,
     "mount -t nfs "..nfs_server_ip..":/tmp /mnt ",
     "df -h | tail -l",
