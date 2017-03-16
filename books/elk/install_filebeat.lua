@@ -1,21 +1,19 @@
 --
--- Created by IntelliJ IDEA.
--- User: guang
--- Date: 2017-01-01
--- Time: 11:31
---
 -- -----------------
--- nginx
-dofile("./books/nginx/nginx_yum_install.lua")
+-- install nginx for test only
+require("books/nginx/nginx")
+local n=nginx:new()
+n:yumInstall()
 -- -------------------
-require("./books/common")
-require("./books/elk/filebeat_source_install")
+require("books/common")
+Cmd("yum -y install ntpdate && ntpdate ntp.ubuntu.com ")
+require("books/elk/filebeat")
 
 local logstash_ip
 
-local fb = filebeat:new()
+local fb = filebeat:new({pdir="/opt/", version="filebeat-5.2.2-linux-x86_64"})
 if not fb:installed() then
-    fb:install()
+    fb:binInstall()
 end
 -- [[
 --复制logstash证书，下载到本地，再上传，；也可以，直接scp，或cat 再 echo

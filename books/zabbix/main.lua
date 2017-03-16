@@ -11,17 +11,42 @@ GO_WITH_ALL_DONE = true
 -- 初始化时等待SSH连接完成再返回
 WAIT_CONN_INIT = false
 
--- 服务器列表定义
+local zabbix={
+    host="192.168.18.200",
+    web={
+        user = "Admin",
+        pass = "zabbix",
+    },
+    mysqlcfg = {
+        host = "192.168.18.200",
+        port = "0",
+        db = "zabbix",
+        user = "zabbix",
+        pass = "zabbix123",
+        root_user = "root",
+        root_pass = "abcdefg",
+        sock = "/var/lib/mysql/mysql.sock"
+    }
+}
 -- 服务器列表定义
 SERVERS = {
-    test1 = { ip = "192.168.2.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2, st="file", script = "./books/zabbix/zabbix_yum_install.lua", },
+    -- [[
+    zabbixhost = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
+        st="file", script = "./books/zabbix/install_zabbix.lua", },
+    mysqlhost = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
+        st="file", script = "./books/zabbix/install_mysql.lua", },
+    nginxhost = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
+        st="file", script = "./books/zabbix/install_nginx_php.lua", },
+        --]]
+    agenthost={ ip = "192.168.18.201", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
+        st="file", script = "./books/zabbix/custem_item_test.lua", },
 }
 
 -- 创建playlist
 pl1 = playlist()
 
 -- 完成服务器列表初始化
-if not pl1:Init(SERVERS, nil, TIMEOUT, WAIT_CONN_INIT) then
+if not pl1:Init(SERVERS, zabbix, TIMEOUT, WAIT_CONN_INIT) then
     -- 尝试开始执行各服务器对应的Lua文件
     pl1:Start(GO_WITH_ALL_DONE)
 end

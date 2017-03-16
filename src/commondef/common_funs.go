@@ -3,8 +3,8 @@ package commondef
 import (
 	"bytes"
 	"fmt"
-	"github.com/layeh/gopher-luar"
 	"github.com/yuin/gopher-lua"
+	"layeh.com/gopher-luar"
 	"reflect"
 	"time"
 )

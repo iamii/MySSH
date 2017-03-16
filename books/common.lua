@@ -1,4 +1,5 @@
 ERR = nil
+HOST = HOST
 
 -- 执行命令
 function Cmd(cmd)
@@ -52,14 +53,23 @@ function string.split(str, delimiter)
     return result
 end
 
--- 设置配置文件中 key[space]value 形式的值
-function Setfkv(file, key, value, add)
-    Cmd("grep -E '^#?"..key.."[[:space:]]' "..file)
+-- 设置配置文件中 key value 形式的值
+function Setfkv(file, key, value, add, delimiter, comment)
+    if not delimiter then
+        delimiter = [[:space:]]
+    else
+        delimiter = "[[:space:]]*"..delimiter.."[[:space:]]*"
+    end
+
+    comment = comment or ""
+
+
+    local grepstr = [=[grep -E '^]=]..comment..[=[?[[:space:]]?]=]..key..delimiter..[=[' ]=]..file
+
+    Cmd(grepstr)
+
     if ERR.Code == 0 and add == false then
-        Cmd{[=[sed -i 's,^#*\(]=]..key..
-                [=[[[:space:]]\).*$,\1 ]=]..value..
-                [=[,' ]=]..file,
-        }
+        Cmd([=[sed -i 's,^]=]..comment..[=[*[[:space:]]*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
     elseif add == true then
             Cmd("echo "..key.." "..value.." >> "..file)
     end

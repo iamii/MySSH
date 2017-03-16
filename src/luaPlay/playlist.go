@@ -3,14 +3,15 @@ package luaPlay
 import (
 	"SSH"
 	. "commondef"
-	cm "commondef"
+	//cm "commondef"
 	"errors"
-	"github.com/layeh/gopher-luar"
 	"github.com/yuin/gopher-lua"
+	"layeh.com/gopher-luar"
 	"os"
 	"reflect"
 	"sync"
 	"time"
+	zx "zabbixx"
 )
 
 type PlayList struct {
@@ -147,7 +148,10 @@ func (pl *PlayList) gogogo(host *SSH.MySSHClient) (err error) {
 }
 
 func (pl *PlayList) dispatch() {
-	em := SSH.Eventmsg{Src: "playlist", Info: pl.setvalue}
+	var em *SSH.Eventmsg
+	if (pl.setvalue != nil){
+		em = &SSH.Eventmsg{Src: "playlist", Info: pl.setvalue}
+	}
 	for h := range pl.servers {
 		pl.servers[h].Ch <- &SSH.Message{Code: -1000, Msg: em}
 	}
@@ -205,7 +209,8 @@ func (pl *PlayList) GetHistory(hostname string) map[time.Time]SSH.ResultOfExec {
 
 func RegisterPlaylist(L *lua.LState) {
 	pl := PlayList{}
-	cm.Register(L)
+	Register(L)
 	L.SetGlobal("playlist", luar.New(L, pl))
 	L.SetGlobal("playlist", luar.NewType(L, pl))
+	zx.ZABBIXXRegister(L)
 }

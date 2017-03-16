@@ -13,6 +13,7 @@ function openssl:new(o)
         return nil
     else
         Cmd{
+            "yum -y install ntpdate && ntpdate ntp.ubuntu.com",
             "mkdir -p "..o.private.." "..o.certs,
             "cp /etc/pki/tls/openssl.cnf "..o.cnf
         }
@@ -32,7 +33,7 @@ local function addiptov3_ca(ossl, ip)
     end
 end
 
-function openssl:addipcert(hostip)
+function openssl:makeipcert(hostip)
     addiptov3_ca(self, hostip)
     Cmd{
         "openssl req -config "..self.cnf..

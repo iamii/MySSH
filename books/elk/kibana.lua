@@ -13,8 +13,12 @@ function kibana:new(o)
     return o
 end
 
-function kibana:installed()
-    Cmd("ls "..self.pdir..self.version)
+function kibana:installed(path)
+    if path then
+        Cmd("ls "..path)
+    else
+        Cmd("ls "..self.pdir..self.version)
+    end
     if ERR.Code == 2 then
         return false
     else
@@ -22,16 +26,19 @@ function kibana:installed()
     end
 end
 
-function kibana:install()
-    local lpath
-    if os.getenv("OS") == "Windows_NT" then
-        lpath = [[D:\Documents\downloads\]]
-    else
-        lpath = [[/home/iaai/Downloads/]]
+function kibana:binInstall()
+
+    if self:installed() then
+        print("kibana 已安装了。")
+        return -1
     end
+
+    local lpath = GetLocalPath()
     local server_host = "127.0.0.1"
     -- setup jdk
-    dofile([[books/jdk/jdk_bin_install.lua]])
+    require("books/jdk/jdk")
+    local j=jdk:new()
+    j:binInstall()
 
     -- upload&&tar
     Upload(lpath..self.version..".tar.gz", self.pdir..self.version..".tar.gz")
@@ -47,21 +54,26 @@ function kibana:install()
     Cmd{"useradd -MU -s /sbin/nologin elk ",
         "chown elk.elk "..self.pdir..self.version.." -R"}
 
-
 end
 
 function kibana:run()
-    local ia_input = {
-        "sudo -E -u elk nohup "..self.pdir..self.version.."/bin/kibana > /dev/null 2>&1 & ",
-        "\n"
-    }
-    Ia(ia_input, 50)
-
+    Cmd([[ps aux | grep -v grep | grep "]]..self.version..[["]])
+    if ERR.Code == 1 then
+        local ia_input = {
+            "sudo -E -u elk nohup "..self.pdir..self.version.."/bin/kibana > /dev/null 2>&1 & ",
+            "\n"
+        }
+        Ia(ia_input, 50)
+    else
+        print("kibana 已经运行")
+    end
 end
 
 function kibana:install_nginx()
     -- nginx
-    dofile("./books/nginx/nginx_yum_install.lua")
+    require("books/nginx/nginx")
+    local n=nginx:new()
+    n:yumInstall()
 
     local kibana_conf = [[
     server {

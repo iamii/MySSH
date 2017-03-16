@@ -11,8 +11,8 @@ jdk ={}
 
 function jdk:new(o)
     o = o or {
-        filename = "jdk-8u111-linux-x64.tar.gz",
-        version="jdk1.8.0_111",
+        filename = "jdk-8u121-linux-x64.tar.gz",
+        version="jdk1.8.0_121",
         path = "/usr/local/"
     }
     setmetatable(o, self)
@@ -20,15 +20,8 @@ function jdk:new(o)
     return o
 end
 
-function jdk:install()
-    local lpath
-    if os.getenv("OS") == "Windows_NT" then
-        require([[.\books\common]])
-        lpath = [[D:\Documents\downloads\]]
-    else
-        require("./books/common")
-        lpath = [[/home/iaai/Downloads/]]
-    end
+function jdk:binInstall()
+    local lpath = GetLocalPath()
 
     local jdk_str = [[export JAVA_HOME=]]..self.path..self.version.."\n"..
     [[export PATH=$PATH:$JAVA_HOME/bin

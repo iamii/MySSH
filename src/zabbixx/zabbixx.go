@@ -2,12 +2,12 @@ package zabbixx
 
 import (
 	. "commondef"
-	co "commondef"
+	//co "commondef"
 	"github.com/AlekSi/zabbix"
-	"github.com/layeh/gopher-luar"
 	"github.com/pkg/errors"
 	"github.com/yuin/gopher-lua"
 	"reflect"
+	"layeh.com/gopher-luar"
 )
 
 type API struct {
@@ -52,11 +52,11 @@ func (api *API) HostGroupsGet(params interface{}) (res zabbix.HostGroups, err er
 func convert(params interface{}) (ret interface{}, err error) {
 	DEBUG(reflect.TypeOf(params), "::::::::::::::::", params)
 	if ltb, ok := params.(*lua.LTable); ok {
-		ret = co.Lua2goValue(ltb)
+		ret = Lua2goValue(ltb)
 	}
 
 	DEBUG(reflect.TypeOf(ret), "::::::::::::::::", ret)
-	ret, err = co.ConverToMsi(ret)
+	ret, err = ConverToMsi(ret)
 	DEBUG(reflect.TypeOf(ret), ":::", ret, "-------------", err)
 	return
 }

@@ -29,3 +29,8 @@ _testmain.go
 *.exe
 *.test
 *.prof
+/src/github.com
+/src/golang.org/
+/src/gopkg.in/
+src/layeh.com/
+将删除 books/crontab/

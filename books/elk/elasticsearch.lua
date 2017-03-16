@@ -1,4 +1,4 @@
-require("./books/common")
+require("books/common")
 
 elasticsearch = {}
 
@@ -13,8 +13,12 @@ function elasticsearch:new(o)
     return o
 end
 
-function elasticsearch:installed()
-    Cmd("ls "..self.pdir..self.version)
+function elasticsearch:installed(path)
+    if path then
+        Cmd("ls "..path)
+    else
+        Cmd("ls "..self.pdir..self.version)
+    end
     if ERR.Code == 2 then
         return false
     else
@@ -22,17 +26,19 @@ function elasticsearch:installed()
     end
 end
 
-function elasticsearch:install()
-    local lpath
-    if os.getenv("OS") == "Windows_NT" then
-        lpath = [[D:\Documents\downloads\]]
-    else
-        lpath = [[/home/iaai/Downloads/]]
-    end
+function elasticsearch:binInstall()
+    local lpath =GetLocalPath()
     local listenIP = "localhost"
 
+    if self:installed() then
+        print("elasticsearch已安装了。")
+        return -1
+    end
+
     -- setup jdk
-    dofile([[books/jdk/jdk_bin_install.lua]])
+    require("books/jdk/jdk")
+    local j=jdk:new()
+    j:binInstall()
 
     -- "ulimit unlimited"
     -- vm.max_map_count=26144
@@ -61,14 +67,34 @@ function elasticsearch:install()
 
     -- adduser elk
     Cmd{"useradd -MU -s /sbin/nologin elk ",
-        "chown elk.elk "..self.pdir..self.version.." -R"}
+        "chown elk.elk "..self.pdir..self.version.." -R" }
+
+
 end
 
 -- run elasticsearch
-function elasticsearch:run()
-    local ia_input = {
-        ". /etc/profile", "\n",
-        "ulimit -n 65536", "\n",    -- max file descripter
-        "sudo -E -u elk "..self.pdir..self.version.."/bin/elasticsearch -d", "\n"}
-    Ia(ia_input, 30)
+function elasticsearch:start()
+    Cmd([[ps aux | grep -v grep | grep "Elasticsearch -d"]])
+    if ERR.Code == 1 then
+        local ia_input = {
+            ". /etc/profile", "\n",
+            "ulimit -n 65536", "\n",    -- max file descripter
+            "sudo -E -u elk "..self.pdir..self.version.."/bin/elasticsearch -d", "\n"}
+        Ia(ia_input, 30)
+    else
+        print("elasticsearch 已经运行")
+    end
+end
+
+function elasticsearch:restart()
+    Cmd([[ps aux | grep -v grep | grep "Elasticsearch -d" | awk '{print $2; exit -1}']])
+    if ERR.Code == -1 then
+        local pid = ERR.Msg
+        Cmd("kill -15 "..pid.." || kill -9 "..pid)
+        local ia_input = {
+            ". /etc/profile", "\n",
+            "ulimit -n 65536", "\n",    -- max file descripter
+            "sudo -E -u elk "..self.pdir..self.version.."/bin/elasticsearch -d", "\n"}
+        Ia(ia_input, 30)
+    end
 end

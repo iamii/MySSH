@@ -4,12 +4,11 @@
 -- Date: 2017-01-01
 -- Time: 11:14
 --
-require("./books/common")
-require("./books/openssl/openssl")
+require("books/common")
+require("books/openssl/openssl")
 
 filebeat = {}
-filebeat.templ =
-    {
+filebeat.templ = {
         filebeat = {
             prospectors = {
                 {
@@ -45,8 +44,12 @@ function filebeat:new(o)
     return o
 end
 
-function filebeat:installed()
-   Cmd("ls "..self.pdir..self.version)
+function filebeat:installed(path)
+    if path then
+        Cmd("ls "..path)
+    else
+        Cmd("ls "..self.pdir..self.version)
+    end
    if ERR.Code == 2 then
     return false
    else
@@ -54,34 +57,46 @@ function filebeat:installed()
    end
 end
 
-function filebeat:install()
-    local lpath
-    if os.getenv("OS") == "Windows_NT" then
-        lpath = [[D:\Documents\downloads\]]
-    else
-        lpath = [[/home/iaai/Downloads/]]
+function filebeat:binInstall()
+    if self:installed() then
+        print("filebeat 已安装了。")
+        return -1
     end
+
+    local lpath = GetLocalPath()
     -- setup jdk
-    dofile([[books/jdk/jdk_bin_install.lua]])
+    require("books/jdk/jdk")
+    local j=jdk:new()
+    j:binInstall()
+
     -- upload && tar
     Upload(lpath..self.version..".tar.gz", self.pdir..self.version..".tar.gz")
     Cmd("cd "..self.pdir.." && tar zxvf "..self.version..".tar.gz")
-
 end
 
 function filebeat:addconf(filename)
-    local template
-    local out = BUFFER()
-    HOST:Config(template, self.templ, out)
-    Cmd([[echo -e "]]..out:String()..[[" > ]]..self.pdir..self.version.."/"..filename)
+    Cmd("ls "..self.pdir..self.version.."/"..filename)
+    if ERR.Code == 2 then
+        local template
+        local out = BUFFER()
+        HOST:Config(template, self.templ, out)
+        Cmd([[echo -e "]]..out:String()..[[" > ]]..self.pdir..self.version.."/"..filename)
+    else
+        print("filebeat addconf ", filename, "已经存在")
+    end
 end
 
 function filebeat:runconf(filename)
-    local ia_in = {
-        "cd "..self.pdir..self.version, "\n",
-        "nohup ./filebeat -c "..filename.." & ", "\n"
-    }
-    Ia(ia_in, 300)
+    Cmd([[ps aux | grep -v grep | grep "filebeat.*]]..filename..[["]])
+    if ERR.Code == 1 then
+        local ia_in = {
+            "cd "..self.pdir..self.version, "\n",
+            "nohup ./filebeat -c "..filename.." & ", "\n"
+        }
+        Ia(ia_in, 300)
+    else
+        print("filebeat runconf ", filename, "已经运行")
+    end
 end
 
 

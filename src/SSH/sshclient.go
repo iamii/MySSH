@@ -15,11 +15,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/layeh/gopher-luar"
 	"github.com/yuin/gopher-lua"
+	"layeh.com/gopher-luar"
 
 	. "commondef"
-	cm "commondef"
+	//cm "commondef"
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
@@ -102,7 +102,7 @@ func NewMySSHClient(server Server, WAIT_CONN_INIT bool, plch chan *Message) (*My
 			Timeout: time.Second * time.Duration(server.Timeout),
 		}
 		///*
-	} else if server.Auth == "pb" {
+	} else if server.Auth == "pk" {
 		key, err := ioutil.ReadFile(server.Keyfile)
 		if err != nil {
 			ERROR("不能读取私钥文件.", server.Name)
@@ -210,9 +210,9 @@ func (msc *MySSHClient) Cmd(cmds []string) (rt *Message) {
 		//超时
 		select {
 		case rt = <-ch:
-		case <-time.After(time.Duration(msc.Timeout*100) * time.Second):
+		case <-time.After(time.Duration(msc.Timeout*300) * time.Second):
 			//case <-time.After(time.Duration(msc.Timeout*3)*time.Second):
-			ERROR(msc.Name, " exec ", cmd, " time out.")
+			ERROR(msc.Name, " exec \" ", cmd, " \" time out.")
 			rt = &Message{Code: -1, Msg: errors.New("Cmd exec time out")}
 		}
 		if _, ok := rt.Msg.(error); ok {
@@ -398,22 +398,26 @@ func (msc *MySSHClient) RunIa(input []string, timeout int) (rt *Message) {
 }
 
 func (msc *MySSHClient) PutFile(lfile, rfile string) (rt *Message) {
-	//DEBUG("msc->PutFile:::", lfile, "-", rfile)
+	DEBUG(msc.Name, "->PutFile:::", lfile, "-", rfile)
+
 	sftpClient, err := sftp.NewClient(msc.sc)
 	defer sftpClient.Close()
 	if err != nil {
+		DEBUG("Error:", err)
 		return &Message{Code: -1, Msg: err}
 	}
 
 	srcFile, err := os.Open(lfile)
 	defer srcFile.Close()
 	if err != nil {
+		DEBUG("Error:", err)
 		return &Message{Code: -1, Msg: err}
 	}
 
 	dstFile, err := sftpClient.Create(rfile)
 	defer dstFile.Close()
 	if err != nil {
+		DEBUG("Error:", err)
 		return &Message{Code: -1, Msg: err}
 	}
 
@@ -427,6 +431,7 @@ func (msc *MySSHClient) PutFile(lfile, rfile string) (rt *Message) {
 			dstFile.Write(buf)
 		}
 	} else {
+		DEBUG("Error:", err)
 		rt = &Message{Code: -1, Msg: err}
 	}
 
@@ -575,6 +580,6 @@ func (msc *MySSHClient) Config(tpl, vars, out interface{}) (rt *Message) {
 
 func ClientRegister(L *lua.LState, host MySSHClient) {
 	L.SetGlobal("HOST", luar.New(L, host))
-	cm.Register(L)
+	Register(L)
 	zx.ZABBIXXRegister(L)
 }
