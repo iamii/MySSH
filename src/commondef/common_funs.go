@@ -23,6 +23,10 @@ func TimeOut(fun func(), timeout int) bool {
 	}
 }
 
+func Sleep(second int) {
+	time.Sleep(time.Second * time.Duration(second))
+}
+
 func luaDebug(shows ...interface{}) {
 	DEBUG(reflect.TypeOf(shows), "::lua debug :::", shows)
 }
@@ -34,6 +38,19 @@ func luaInfo(shows ...interface{}) {
 func luaGeterr(err error) string {
 	fmt.Println(err)
 	return err.Error()
+}
+
+func LuaDeepCopy(L *lua.LState, src *lua.LTable)(dst *lua.LTable){
+	dst = L.NewTable()
+
+	src.ForEach(func(key, value lua.LValue) {
+		if lt, ok := value.(*lua.LTable); ok {
+			value = LuaDeepCopy(L, lt)
+		}
+		dst.RawSetString(key.String(), value)
+	})
+
+	return dst
 }
 
 //参考:https://github.com/yuin/gluamapper/blob/master/gluamapper.go
@@ -107,6 +124,7 @@ func ConverToMsi(src interface{}) (dst interface{}, err error) {
 func Register(L *lua.LState) {
 	L.SetGlobal("DEBUG", luar.New(L, luaDebug))
 	L.SetGlobal("INFO", luar.New(L, luaInfo))
+	L.SetGlobal("SLEEP", luar.New(L, Sleep))
 	L.SetGlobal("printerr", luar.New(L, luaGeterr))
 
 	//

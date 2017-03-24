@@ -7,10 +7,12 @@ import (
 )
 
 const (
-	LevelDebug = (iota + 1) * 10
+	LevelDebug = (iota + 1) * 100
 	LevelInfo
+	LevelNotice
 	LevelWarning
 	LevelError
+	LevelCritical
 	LevelPanic
 	LevelFatal
 )

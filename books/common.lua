@@ -1,5 +1,33 @@
 ERR = nil
 HOST = HOST
+PLAYLISTINFO = PlayListInfo
+
+-- 创建执行列表
+function PL_RUN(servers, golbal, TIMEOUT, GO_WITH_ALL_DONE, WAIT_CONN_INIT)
+    -- 总超时时间
+    TIMEOUT = TIMEOUT or 300
+    -- 所有服务器都连接上才可执行脚本
+    GO_WITH_ALL_DONE = GO_WITH_ALL_DONE or true
+    -- 初始化时等待SSH连接完成再返回
+    WAIT_CONN_INIT =  WAIT_CONN_INIT or false
+
+    -- 服务器列表定义
+
+    -- 创建playlist
+    local pl = playlist()
+
+    -- 完成服务器列表初始化
+    if not pl:Init(servers, golbal, TIMEOUT, WAIT_CONN_INIT) then
+        -- 尝试开始执行各服务器对应的Lua文件 -- 返回pl.servers
+        pl:Start(GO_WITH_ALL_DONE)
+        -- 打印历史记录
+        -- [[
+        -- pl:ShowHistories()
+        --]]
+        return pl
+    end
+    return nil
+end
 
 -- 执行命令
 function Cmd(cmd)
@@ -19,9 +47,10 @@ end
 
 -- 上传单文件
 function Upload(lfile, rfile)
+    ERR= HOST:PutFile(lfile, rfile)
     -- ERR = HOST:Cmd{"ls "..rfile}
     --if ERR.Code == 2 then
-        if (HOST:PutFile(lfile, rfile)) ~= nil then
+        if ERR ~= nil then
             print(lfile.." upload failed..")
             os.exit()
         end
@@ -33,7 +62,8 @@ end
 
 -- 下载单文件
 function Download(rfile, lfile)
-    if (HOST:GetFile(rfile, lfile)) ~= nil then
+    ERR = HOST:GetFile(rfile, lfile)
+    if ERR ~= nil then
         print(rfile.." download failed..")
         os.exit()
     end
@@ -56,22 +86,25 @@ end
 -- 设置配置文件中 key value 形式的值
 function Setfkv(file, key, value, add, delimiter, comment)
     if not delimiter then
-        delimiter = [[:space:]]
+        delimiter = "[[:space:]]"
     else
         delimiter = "[[:space:]]*"..delimiter.."[[:space:]]*"
     end
 
     comment = comment or ""
 
+    -- print("---------------------", key, value, add, delimiter, comment)
 
-    local grepstr = [=[grep -E '^]=]..comment..[=[?[[:space:]]?]=]..key..delimiter..[=[' ]=]..file
+    local grepstr = [==[grep -E '^]==]..comment..[==[?[[:space:]]?]==]..key..delimiter..[==[' ]==]..file
 
     Cmd(grepstr)
 
     if ERR.Code == 0 and add == false then
-        Cmd([=[sed -i 's,^]=]..comment..[=[*[[:space:]]*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
+        -- Cmd([=[sed -i 's,^]=]..comment..[=[*[[:space:]]*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
+        Cmd([=[sed -i 's,^]=]..comment..[=[*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
     elseif add == true then
-            Cmd("echo "..key.." "..value.." >> "..file)
+        print(key, value, file)
+        Cmd("echo "..key.." "..value.." >> "..file)
     end
     return ERR
 end

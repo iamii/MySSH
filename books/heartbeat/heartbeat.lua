@@ -7,8 +7,11 @@
 --
 require("books/common")
 
-hb = {
-        version="3.0.4",          -- heartbeat version
+hb = {}
+
+function hb:new(o)
+    o = o or {
+        version="3.0.4",    -- heartbeat version
         nodes={},           -- 节点
         resources={},       -- 资源
         constraints={       -- 约束
@@ -17,11 +20,8 @@ hb = {
             colocations={}  -- 排列
         },
         hacf={},
-        authkeys={},
-}
+        authkeys={}, }
 
-function hb:new(o)
-    o = o or {}
     setmetatable(o, self)
     self.__index = self
 
@@ -33,53 +33,8 @@ function hb:addnodes(nodes)
     self.nodes = nodes
 end
 
--- 执行
-local function pl_run(servers, golbal)
-    -- 总超时时间
-    local TIMEOUT = 300
-    -- 所有服务器都连接上才可执行脚本
-    local GO_WITH_ALL_DONE = true
-    -- 初始化时等待SSH连接完成再返回
-    local WAIT_CONN_INIT = false
-
-    -- 服务器列表定义
-
-    -- 创建playlist
-    local pl = playlist()
-
-    -- 完成服务器列表初始化
-    if not pl:Init(servers, golbal, TIMEOUT, WAIT_CONN_INIT) then
-        -- 尝试开始执行各服务器对应的Lua文件 -- 返回pl.servers
-        pl:Start(GO_WITH_ALL_DONE)
-        return pl
-    end
-end
-
 -- 在每个节点上添加所有节点的hostname信息
 function hb:sethostnames()
-    local sethostnames_scripts = {
-        [===[
-        require("books/common")
-
-        local msg = HOST:Wait({src="playlist"})
-
-        local hosts = msg.Msg.Info
-
-        for host, v in pairs(hosts) do
-            -- [==[
-            if HOST.Ip == hosts[host].ip then
-                Cmd("hostname "..host)
-            end
-            Cmd([[grep ]]..host..[[ /etc/hosts]])
-            if ERR.Code == 0 then
-                Cmd([=[sed -i '/^]=]..host..[=[.*/d' /etc/hosts]=])
-            end
-            Cmd([[echo -e "]]..hosts[host].ip..[[ ]]..host..[[" >> /etc/hosts]])
-            --]==]
-        end
-            ]===]
-    }
-
     for k, v in pairs(self.nodes) do
         v.st = "file"
         v.script="./books/heartbeat/sethostnames.lua"
@@ -87,7 +42,7 @@ function hb:sethostnames()
         -- v.script=sethostnames_scripts[1]
     end
 
-    pl_run(self.nodes, self.nodes)
+    PL_RUN(self.nodes, self.nodes)
 
 end
 
@@ -101,7 +56,7 @@ function hb:ntpdate()
         v.st= "string"
         v.script = s
     end
-    pl_run(self.nodes)
+    PL_RUN(self.nodes)
 end
 
 -- SSH互信
@@ -115,6 +70,7 @@ function hb:exchangekeys()
         SSHD.keygen("rsa")
         Cmd("cat $HOME/.ssh/id_rsa.pub")
         Cmd("cat /etc/ssh/ssh_host_rsa_key.pub")
+
         ]====]
     }
     for _, v in pairs(self.nodes) do
@@ -124,7 +80,7 @@ function hb:exchangekeys()
         v.script = getkey[1]
     end
 
-    local pl = pl_run(self.nodes, self.nodes)
+    local pl = PL_RUN(self.nodes, self.nodes)
 
     -- tkey={host={ip, id_isa.pub, host_rsa.pub}}
     local tkey={}
@@ -145,9 +101,7 @@ function hb:exchangekeys()
     local addkey = {
         [====[
         require("books/sshd/sshd")
-
-        local msg = HOST:Wait({src="playlist"})
-        local tkey = msg.Msg.Info
+        local tkey = PLAYLISTINFO
 
         for host, v in pairs(tkey) do
             SSHD.addpubkey("root", v.id_isa)
@@ -161,7 +115,6 @@ function hb:exchangekeys()
         SSHD.set("AuthorizedKeysFile", ".ssh/authorized_keys")
 
         SSHD.restart()
-
         ]====]
     }
 
@@ -170,19 +123,27 @@ function hb:exchangekeys()
         v.script= addkey[1]
     end
 
-    pl_run(self.nodes, tkey)
+    PL_RUN(self.nodes, tkey)
 
 end
 
 function hb:install()
-    for _, v in pairs(self.nodes) do
+    -- service sshd restart之后，好像配置低的话，要很久才能连接上。
+    local t={}
+    for h, v in pairs(self.nodes) do
         v.st = "file"
         v.script="./books/heartbeat/install.lua"
         -- v.st= "string"
         -- v.script = getkey[1]
+        t[h] = v.timeout
+        v.timeout=20
     end
 
-    pl_run(self.nodes, self)
+    PL_RUN(self.nodes, self)
+
+    for h, v in pairs(self.nodes) do
+        v.timeout = t[h]
+    end
 end
 
 -- 添加资源
@@ -216,6 +177,7 @@ function hb:start()
     local s = [[
         HOST:Cmd{
         "yum -y install httpd",
+        "echo "..HOST.Ip.." > /var/www/html/index.html",
         "service iptables stop",
         "service heartbeat start",
         }
@@ -225,6 +187,6 @@ function hb:start()
         v.script = s
     end
 
-    pl_run(self.nodes)
+    PL_RUN(self.nodes)
 end
 

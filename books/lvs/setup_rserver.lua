@@ -20,13 +20,10 @@ arp_ignore: Define different modes for sending replies in response to received A
 --]]
 require("./books/common")
 
-Cmd("uname -r")
-local version = ERR.Msg
-
-if version >= "2.6" then
-    local msg = HOST:Wait({})
-    local vip = msg.Msg.info.vip
-    local type = msg.Msg.info.type
+if GetLinuxVersion().ker >= "2.6" then
+    local msg = PLAYLISTINFO
+    local vip = string.split(msg.vservice, ":")[1]
+    local type = msg.lvs_type
     if type == "dr" then
         Cmd{
            "/sbin/ifconfig lo down",
@@ -42,5 +39,11 @@ if version >= "2.6" then
     elseif type == "nat" then
         print("nat模式，只需要real server的网关指向direcctor server")
     end
+
+    -- [=[
+    Cmd{
+        [[yum -y install httpd && service httpd restart && service iptables stop && echo "]]..HOST.Ip..[[" > /var/www/html/index.html]],
+    }
+    --]=]
 end
 

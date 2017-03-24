@@ -468,6 +468,9 @@ func (msc *MySSHClient) GetFile(rfile, lfile string) (rt *Message) {
 			}
 			dstFile.Write(buf)
 		}
+	} else {
+		DEBUG("Error:", err)
+		rt = &Message{Code: -1, Msg: err}
 	}
 	return
 }
@@ -517,7 +520,7 @@ func (msc *MySSHClient) Wait(message map[string]interface{}) (rt *Message) {
 	for get := false; get != true; {
 		msg := <-msc.Ch
 		//DEBUG("----------------------------------------->", reflect.TypeOf(msg.Msg))
-		if m, ok := msg.Msg.(Eventmsg); ok {
+		if m, ok := msg.Msg.(*Eventmsg); ok {
 			if waitSrcHost, ok := wm.Src.(string); ok {
 				hosts := strings.Fields(waitSrcHost)
 				for i := 0; i < len(hosts); i++ {

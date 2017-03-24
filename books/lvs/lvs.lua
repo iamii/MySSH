@@ -5,124 +5,79 @@
 -- Time: 16:21
 --
 
-require("./books/common")
+require("books/common")
 
--- real_servers = {service="", weight=""}
-lvs = {vservice="ip:port", scheduler="rr/wrr/wlc/...", service_type = "tcp/udp/fwm", persistent="30", firewallflag="-s xxx -d xxx -i eth0 --dport 80", firewallmark="88", real_servers = {}, dip=""}
-
-local function check_kernel_version()
-    Cmd("uname -r")
-    return ERR.Msg
-end
+lvs = {
+    --[[
+    --services = {lvsinstance1, lvsinstance2}
+    --]]
+    services={},
+}
 
 function lvs:new(o)
-    if check_kernel_version() >= "2.6" then
+    o = o or {}
+    setmetatable(o, self)
+    self.__index = self
+    return o
+end
+
+function lvs:add_services(tag, service)
+    self.services[tag]=service
+end
+
+function lvs:install_service(tag)
+    local ss = {
+        dss = [==[
+require("./books/lvs/lvsinstance")
+local l = lvsinstance:new(PLAYLISTINFO)
+l:add_virtual_service()
+        ]==],
+
+        rss = [===[
+require("./books/common")
+
+if GetLinuxVersion().ker >= "2.6" then
+    local msg = PLAYLISTINFO
+    local vip = string.split(msg.vservice, ":")[1]
+    local type = msg.lvs_type
+    if type == "dr" then
         Cmd{
-            -- "service iptables stop ",
-            -- "chkconfig iptables off",
-            "iptables -F && iptables -Z",
-            "yum install ipvsadm -y"
+           "/sbin/ifconfig lo down",
+           "/sbin/ifconfig lo up",
+           "echo 1 > /proc/sys/net/ipv4/conf/lo/arp_ignore",
+           "echo 2 > /proc/sys/net/ipv4/conf/lo/arp_announce",
+           "echo 1 > /proc/sys/net/ipv4/conf/all/arp_ignore",
+           "echo 2 > /proc/sys/net/ipv4/conf/all/arp_announce",
+           "/sbin/ifconfig lo:0 "..vip.." broadcast "..vip..
+                   " netmask 255.255.255.255 up",
+           "/sbin/route add -host "..vip.." dev lo:0",
         }
-        o = o or {}
-        setmetatable(o, self)
-        self.__index = self
-        return o
-    else
-        print("内核版本太低，请手动安装ipvs模块。")
-        return nil
-    end
-end
-
-function lvs:setpersistent(timeout)
-    self.persistent = "-p "..timeout
-end
-
-function lvs:setfirewallparam(flag, mark)
-    self.firewallflag = flag
-    self.firewallmark = mark
-end
-
-function lvs:add_service(lvs_type)
-    -- 服务类型 tpc/udp/firewall mark
-    local st
-    if self.service_type == "tcp" then
-        st = "-t"
-    elseif self.service_type == "udp" then
-        st = "-u"
-    elseif self.service_type == "fwm" then
-        st = "-f"
-    else
-         print("未支持的服务类型")
-         os.exit()
+    elseif type == "nat" then
+        print("nat模式，只需要real server的网关指向direcctor server")
     end
 
-    -- lvs转发类型 nat/dr --还没看tun，不支持
-    local lt
-    if lvs_type == "dr" then
-        lt = "-g"
-        local t = string.split(self.vservice, ":")
-        if not t then
-            print("服务定义错误，格式为 ip:port")
-            os.exit()
+    -- [=[
+    Cmd{
+        [[yum -y install httpd && service httpd restart && service iptables stop && echo "]]..HOST.Ip..[[" > /var/www/html/index.html]],
+    }
+    --]=]
+end
+        ]===]
+    }
+    local service = self.services[tag]
+    if service then
+        -- dr需要先在director上定义eth0:0
+        for _, v in pairs(service.direc_servers) do
+            v.st="string"
+            v.script = ss.dss
         end
-        local vip = t[1]
+        PL_RUN(service.direc_servers, service)
 
-        Cmd{
-            "/sbin/ifconfig eth0:1 "..vip.." broadcast "..vip..
-                    " netmask 255.255.255.255 up",
-            "/sbin/route add -host "..vip.." dev eth0:1",
-        }
-    elseif lvs_type == "nat" then
-        Cmd("echo 1 > /proc/sys/net/ipv4/ip_forward")
-        lt = "-m"
-        print("===别忘记配置real server的网关为director server===")
-    else
-        print("未支持的lvs类型")
-        os.exit()
-    end
-
-
-    if st ~= nil and lt ~= nil then
-        -- firewall mark  太麻烦，未测试
-        if st == "-f" then
-            Cmd{
-                "ipvsadm -A -f "..self.firewallmark.." -s "..self.scheduler.." "..self.persistent,
-                "iptables -t mangle -A PREROUTING "..self.firewallflag.." -j MARK --set-mark "..self.firewallmark
-            }
-
-
-            for k, v in pairs(self.real_servers) do  -- 未处理 -a 添加 realserver时只要RIP，
-                Cmd(
-                    "ipvsadm -a -f "..self.firewallmark.." -r "..string.split(v.service,":")[1]..
-                            " "..lt.." -w "..v.weight
-                )
-            end
-        else    -- tcp/udp
-            Cmd{
-                 "ipvsadm -A "..st.." "..self.vservice.." -s "..self.scheduler.." "..self.persistent,
-            }
-
-            for k, v in pairs(self.real_servers) do
-                Cmd(
-                   "ipvsadm -a "..st.." "..self.vservice.." -r "..v.service..
-                           " "..lt.." -w "..v.weight
-                )
-            end
+        for _, v in pairs(service.real_servers) do
+            v.st="string"
+            v.script = ss.rss
         end
-    end
-end
 
-function lvs:list_service()
-    if self.service_type == "tcp" then
-        Cmd("ipvsadm -l -t "..self.vservice)
-    elseif self.service_type == "udp" then
-        Cmd("ipvsadm -l -u "..self.vservice)
-    else
-        print("未支持的服务类型:", self.service_type)
-        os.exit()
+         PL_RUN(service.real_servers, service)
     end
-end
-
-function lvs:add_real_server(realserver)
-    table.insert(self.real_servers, realserver)
 end

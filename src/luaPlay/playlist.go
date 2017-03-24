@@ -15,12 +15,12 @@ import (
 )
 
 type PlayList struct {
-	servers map[string]*SSH.MySSHClient
-	timeout int //允许所有服务器运行脚本的最长时间
-	ch      chan *SSH.Message
-	wg      sync.WaitGroup
+	servers    map[string]*SSH.MySSHClient
+	timeout    int         //允许所有服务器运行脚本的最长时间
+	ch         chan *SSH.Message
+	wg         sync.WaitGroup
 
-	setvalue interface{} //保存全局信息，不行只有一开始来条广播
+	globalinfo interface{} //保存全局信息，不行只有一开始来条广播
 }
 
 func (pl *PlayList) Init(sers map[string]SSH.Server, golbalInfo interface{}, timeout int, WAIT_CONN_INIT bool) error {
@@ -46,7 +46,7 @@ func (pl *PlayList) Init(sers map[string]SSH.Server, golbalInfo interface{}, tim
 	}
 
 	pl.servers = servers
-	pl.setvalue = golbalInfo
+	pl.globalinfo = golbalInfo
 	pl.ch = ch
 	pl.timeout = timeout
 	return nil
@@ -104,11 +104,6 @@ func (pl *PlayList) Start(GO_WITH_ALL_DONE bool) (err error) {
 		ERROR("===========playlist执行超时===========")
 	}
 
-	//	for hostName := range pl.servers {
-	//		INFO("<=======显示历史记录=========>", hostName)
-	//		pl.servers[hostName].DisplayHistories()
-	//	}
-
 	return nil
 }
 
@@ -129,6 +124,22 @@ func (pl *PlayList) gogogo(host *SSH.MySSHClient) (err error) {
 	L.SetGlobal("SubPlay", luar.New(L, sub_pl))
 	L.SetGlobal("SubPlay", luar.NewType(L, sub_pl))
 
+
+	/*
+	// 直接传递‘map',并发读（还没写）有问题
+	if lv, ok := pl.setvalue.(lua.LValue);ok{
+		L.SetGlobal("GOLBAL", lv)
+	}
+	*/
+	// 第个‘并发’给重新拷贝生成个，免得并发访问问题
+	if (pl.globalinfo != nil) {
+		if lv, ok := pl.globalinfo.(*lua.LTable); ok {
+			pl.globalinfo = LuaDeepCopy(L, lv)
+
+		}
+
+		L.SetGlobal("PlayListInfo", luar.New(L, pl.globalinfo))
+	}
 	SSH.ClientRegister(L, *host)
 
 	if host.St == "file" {
@@ -148,14 +159,6 @@ func (pl *PlayList) gogogo(host *SSH.MySSHClient) (err error) {
 }
 
 func (pl *PlayList) dispatch() {
-	var em *SSH.Eventmsg
-	if (pl.setvalue != nil){
-		em = &SSH.Eventmsg{Src: "playlist", Info: pl.setvalue}
-	}
-	for h := range pl.servers {
-		pl.servers[h].Ch <- &SSH.Message{Code: -1000, Msg: em}
-	}
-
 	for {
 		msg := <-pl.ch
 		if msg == nil {
@@ -205,6 +208,14 @@ func (pl *PlayList) dispatch() {
 
 func (pl *PlayList) GetHistory(hostname string) map[time.Time]SSH.ResultOfExec {
 	return pl.servers[hostname].Histories
+}
+
+func (pl *PlayList) ShowHistories() {
+	for h := range pl.servers {
+		host := pl.servers[h]
+		INFO("\n\n<<<<<<<<<<<", h, " 的命令历史记录>>>>>>>>>>")
+		host.DisplayHistories()
+	}
 }
 
 func RegisterPlaylist(L *lua.LState) {
