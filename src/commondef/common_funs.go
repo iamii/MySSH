@@ -42,12 +42,20 @@ func luaGeterr(err error) string {
 
 func LuaDeepCopy(L *lua.LState, src *lua.LTable)(dst *lua.LTable){
 	dst = L.NewTable()
+	var i int;
 
 	src.ForEach(func(key, value lua.LValue) {
 		if lt, ok := value.(*lua.LTable); ok {
 			value = LuaDeepCopy(L, lt)
 		}
-		dst.RawSetString(key.String(), value)
+
+		switch lk := key.(type) {
+		case lua.LString:
+			dst.RawSetString(lk.String(), value)
+		case lua.LNumber:
+			dst.RawSetInt(i, value)
+			i = i +1
+		}
 	})
 
 	return dst

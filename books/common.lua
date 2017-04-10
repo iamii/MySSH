@@ -5,7 +5,7 @@ PLAYLISTINFO = PlayListInfo
 -- 创建执行列表
 function PL_RUN(servers, golbal, TIMEOUT, GO_WITH_ALL_DONE, WAIT_CONN_INIT)
     -- 总超时时间
-    TIMEOUT = TIMEOUT or 300
+    TIMEOUT = TIMEOUT or 600
     -- 所有服务器都连接上才可执行脚本
     GO_WITH_ALL_DONE = GO_WITH_ALL_DONE or true
     -- 初始化时等待SSH连接完成再返回
@@ -130,6 +130,8 @@ end
 -- 配置epel
 function InstallEPEL()
 -- install epel
+Cmd("yum install -y epel-release")
+--[[
     local epel_repo = {
     [==[
 [epel]
@@ -195,6 +197,7 @@ XtfLk0W5Ab9pd7tKDR6QHI7rgHXfCopRnZ2VVQ==
         "echo '"..epel_repo[2].."' > /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-6",
         "yum clean metadata && yum clean all && rpm --rebuilddb",
     }
+    --]]
 end
 
 -- 随机数生成
@@ -208,3 +211,99 @@ function Random(b, e)
         return math.random()
     end
 end
+
+-- table2conf
+function Table2conf (ctTable, pident)
+    local context = ""
+    local cident
+    if pident  then
+        cident = pident .. "\t"
+    else
+        cident = ""
+    end
+
+    if type(ctTable) == "table" then
+        for k, v in pairs(ctTable) do
+            -- array/list
+            if type(k) ~= "number" then
+                context = context .. cident ..k
+            end
+
+            if type(v) == "table" then
+                context = context .. " {\n"
+                local vt = Table2conf(v, cident) or ""
+                context = context .. vt.. cident .."}\n"
+            else
+                context = context .. cident.. v .."\n"
+            end
+        end
+    end
+    return context
+ end
+
+-- tablejoin
+function TableJoin(dstTable, src)
+    -- [[
+    if type(src) == "table" then
+        for k, v in pairs(src) do
+            -- 如果目标表中已经存在key，则继续比对
+            if type(k) == "number" then
+                table.insert(dstTable, v)
+            elseif dstTable[k] then
+                -- 如果上一步的键值也是一个table，则递归调用
+                if type(v) == "table" then
+                    TableJoin(dstTable[k], v)
+                else
+                    dstTable[k] = v
+                end
+            else
+                dstTable[k] = v
+            end
+        end
+    else
+       table.insert(dstTable, src)
+    end
+    --]]
+ end
+
+-- table2ini
+function Table2ini(srcT, pre)
+    local coverFun = function(dstT, srcT, pre)
+        if type(srcT) == "table" then
+            for k, v in pairs(srcT) do
+                if type(v) == "table" then
+                    if pre and pre ~= "" then
+                        coverFun(dstT, v, pre.."."..k)
+                    else
+                        coverFun(dstT, v, k)
+                    end
+                else
+                    if pre then
+                        if not dstT["["..pre.."]"] then
+                            dstT["["..pre.."]"] = {}
+                        end
+                        table.insert(dstT["["..pre.."]"], k.."="..v)
+                    else
+                        print("没有获取到pre,可能是section未配置正确")
+                        return
+                    end
+                end
+            end
+        end
+    end
+
+    local ttt = {}
+    coverFun(ttt, srcT, pre )
+
+    local ini=""
+    for k, v in pairs(ttt) do
+        ini = ini..k.."\n"
+        for i = 1, #v do
+            ini = ini..v[i].."\n"
+        end
+        ini = ini .. "\n"
+    end
+
+    return ini
+end
+

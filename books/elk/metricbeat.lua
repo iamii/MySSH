@@ -90,7 +90,7 @@ function metricbeat:addconf(filename)
     if ERR.Code == 2 then
         local template
         local out = BUFFER()
-        HOST:Config(template, self.templ, out)
+        HOST:TemplConfig(template, self.templ, out)
         Cmd([[echo -e "]]..out:String()..[[" > ]]..self.pdir..self.version.."/"..filename)
     else
         print("metricbeat addconf ", filename, "已经存在")

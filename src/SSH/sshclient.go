@@ -563,13 +563,13 @@ func (msc *MySSHClient) Wait(message map[string]interface{}) (rt *Message) {
 	return rt
 }
 
-func (msc *MySSHClient) Config(tpl, vars, out interface{}) (rt *Message) {
+func (msc *MySSHClient) TemplConfig(tpl, vars, out interface{}) (rt *Message) {
 	//      DEBUG("====================:::", reflect.TypeOf(vars))
 	if vv, ok := vars.(*lua.LTable); ok {
 		vars = Lua2goValue(vv)
 	}
 
-	if nc, err := configs.NewConfig(tpl, vars, out, "config"); err != nil {
+	if nc, err := configs.NewTemplConfig(tpl, vars, out, "TemplConfig"); err != nil {
 		rt = &Message{Code: -1, Msg: fmt.Errorf("Create config failed: %v", err)}
 	} else {
 		err := nc.GetConfigs()
@@ -577,7 +577,7 @@ func (msc *MySSHClient) Config(tpl, vars, out interface{}) (rt *Message) {
 			rt = &Message{Code: -1, Msg: err}
 		}
 	}
-	DEBUG(msc.Name, "-->Config==>", rt)
+	DEBUG(msc.Name, "-->TemplConfig==>", rt)
 	return
 }
 

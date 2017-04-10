@@ -25,7 +25,7 @@ type Config struct {
 	out   interface{}
 }
 
-func NewConfig(templ, vars, out interface{}, cType string) (cf *Config, err error) {
+func NewTemplConfig(templ, vars, out interface{}, cType string) (cf *Config, err error) {
 	//DEBUG("NewConfig:::::::::::::::::::;;;;", templ, " : ", vars, " : ", out)
 
 	cf = &Config{}
