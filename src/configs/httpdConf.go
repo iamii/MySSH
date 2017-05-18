@@ -1,9 +1,7 @@
 package configs
 
 import (
-	. "commondef"
 	"fmt"
-	"reflect"
 )
 
 type kvops []map[string]string
@@ -23,7 +21,6 @@ type dir struct {
 }
 
 func Dirs(d []interface{}) (str string) {
-	DEBUG(reflect.TypeOf(d), "-------------", d)
 	for _, v := range d {
 		if mv, ok := v.(map[interface{}]interface{}); ok {
 			str += fmt.Sprintf("\n<Directory %v>", mv["path"])
@@ -36,7 +33,5 @@ func Dirs(d []interface{}) (str string) {
 		}
 
 	}
-
-	DEBUG(str)
 	return str
 }

@@ -8,7 +8,6 @@ import (
 
 	"bufio"
 	"bytes"
-	"configs"
 	"fmt"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -19,7 +18,7 @@ import (
 	"layeh.com/gopher-luar"
 
 	. "commondef"
-	//cm "commondef"
+	. "logdebug"
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
@@ -154,7 +153,6 @@ func NewMySSHClient(server Server, WAIT_CONN_INIT bool, plch chan *Message) (*My
 	return msc, nil
 }
 
-//返回值在goroute下无意义
 func (msc *MySSHClient) connect(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
 
 	msc.State = STATE_CONN
@@ -398,26 +396,26 @@ func (msc *MySSHClient) RunIa(input []string, timeout int) (rt *Message) {
 }
 
 func (msc *MySSHClient) PutFile(lfile, rfile string) (rt *Message) {
-	DEBUG(msc.Name, "->PutFile:::", lfile, "-", rfile)
+	DEBUG(msc.Name, "->PutFile:::", lfile, " - ", rfile)
 
 	sftpClient, err := sftp.NewClient(msc.sc)
 	defer sftpClient.Close()
 	if err != nil {
-		DEBUG("Error:", err)
+		DEBUG("PutFile Error:", err)
 		return &Message{Code: -1, Msg: err}
 	}
 
 	srcFile, err := os.Open(lfile)
 	defer srcFile.Close()
 	if err != nil {
-		DEBUG("Error:", err)
+		DEBUG("PutFile Error:", err)
 		return &Message{Code: -1, Msg: err}
 	}
 
 	dstFile, err := sftpClient.Create(rfile)
 	defer dstFile.Close()
 	if err != nil {
-		DEBUG("Error:", err)
+		DEBUG("PutFile Create Error:", err)
 		return &Message{Code: -1, Msg: err}
 	}
 
@@ -431,7 +429,7 @@ func (msc *MySSHClient) PutFile(lfile, rfile string) (rt *Message) {
 			dstFile.Write(buf)
 		}
 	} else {
-		DEBUG("Error:", err)
+		DEBUG("PutFile stat Error:", err)
 		rt = &Message{Code: -1, Msg: err}
 	}
 
@@ -520,7 +518,7 @@ func (msc *MySSHClient) Wait(message map[string]interface{}) (rt *Message) {
 	for get := false; get != true; {
 		msg := <-msc.Ch
 		//DEBUG("----------------------------------------->", reflect.TypeOf(msg.Msg))
-		if m, ok := msg.Msg.(*Eventmsg); ok {
+		if m, ok := msg.Msg.(Eventmsg); ok {
 			if waitSrcHost, ok := wm.Src.(string); ok {
 				hosts := strings.Fields(waitSrcHost)
 				for i := 0; i < len(hosts); i++ {
@@ -563,22 +561,52 @@ func (msc *MySSHClient) Wait(message map[string]interface{}) (rt *Message) {
 	return rt
 }
 
-func (msc *MySSHClient) TemplConfig(tpl, vars, out interface{}) (rt *Message) {
-	//      DEBUG("====================:::", reflect.TypeOf(vars))
-	if vv, ok := vars.(*lua.LTable); ok {
-		vars = Lua2goValue(vv)
+func (msc *MySSHClient) ReadFile(fl string) (rt *Message, data string) {
+	DEBUG("读取文件:", fl)
+	sftpClient, errNC := sftp.NewClient(msc.sc)
+	defer sftpClient.Close()
+	if errNC != nil {
+		return &Message{Code: -1, Msg: errNC}, ""
+	}
+	srcFile, errCT := sftpClient.Open(fl)
+	defer srcFile.Close()
+	if errCT != nil {
+		return &Message{Code: -1, Msg: errCT}, ""
 	}
 
-	if nc, err := configs.NewTemplConfig(tpl, vars, out, "TemplConfig"); err != nil {
-		rt = &Message{Code: -1, Msg: fmt.Errorf("Create config failed: %v", err)}
-	} else {
-		err := nc.GetConfigs()
-		if err != nil {
-			rt = &Message{Code: -1, Msg: err}
+	if s, err := srcFile.Stat(); err == nil {
+		buf := make([]byte, s.Size())
+
+		for {
+			n, _ := srcFile.Read(buf)
+			if n == 0 {
+				break
+			}
 		}
+		data = string(buf)
+
+	} else {
+		DEBUG("Error:", err)
+		rt = &Message{Code: -1, Msg: err}
 	}
-	DEBUG(msc.Name, "-->TemplConfig==>", rt)
 	return
+}
+
+func (msc *MySSHClient) WriteFile(fl string, data string) (*Message) {
+	DEBUG("写入文件:", fl)
+	sftpClient, errNC := sftp.NewClient(msc.sc)
+	defer sftpClient.Close()
+	if errNC != nil {
+		return &Message{Code: -1, Msg: errNC}
+	}
+	dstFile, err := sftpClient.Create(fl)
+	defer dstFile.Close()
+	if err != nil {
+		DEBUG("XMLWrite Create Error:", err)
+		return &Message{Code: -1, Msg: err}
+	}
+	dstFile.Write([]byte(data))
+	return nil
 }
 
 func ClientRegister(L *lua.LState, host MySSHClient) {

@@ -2,14 +2,13 @@ package configs
 
 import (
 	"bytes"
-	. "commondef"
 	"errors"
 	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
 	"os"
 	"text/template"
-	//	"reflect"
+	. "logdebug"
 )
 
 var tplFuncs = template.FuncMap{
@@ -18,17 +17,17 @@ var tplFuncs = template.FuncMap{
 	"VHOST": Dirs,
 }
 
-type Config struct {
+type TConfig struct {
 	cType string
 	tl    *template.Template
 	vars  interface{}
 	out   interface{}
 }
 
-func NewTemplConfig(templ, vars, out interface{}, cType string) (cf *Config, err error) {
-	//DEBUG("NewConfig:::::::::::::::::::;;;;", templ, " : ", vars, " : ", out)
+func NewTemplConfig(templ, vars, out interface{}, cType string) (cf *TConfig, err error) {
+	DEBUG("NewConfig:::::::::::::::::::;;;;", templ, " : ", vars, " : ", out)
 
-	cf = &Config{}
+	cf = &TConfig{}
 	cf.cType = cType
 
 	if err := cf.setTempl(templ); err != nil {
@@ -46,7 +45,7 @@ func NewTemplConfig(templ, vars, out interface{}, cType string) (cf *Config, err
 	return cf, nil
 }
 
-func (cf *Config) setTempl(templ interface{}) (err error) {
+func (cf *TConfig) setTempl(templ interface{}) (err error) {
 	//DEBUG("cf.setTempl:::::::::::::::::::::", templ)
 	switch v := templ.(type) {
 	case string:
@@ -65,14 +64,13 @@ func (cf *Config) setTempl(templ interface{}) (err error) {
 	case nil:
 		cf.tl = nil
 	default:
-		DEBUG("UnKnown template.", v)
 		return errors.New("UnKnown template.")
 	}
 
 	return nil
 }
 
-func (cf *Config) setVars(vars interface{}) error {
+func (cf *TConfig) setVars(vars interface{}) error {
 	//DEBUG("setVars :::::::::::::::::::::;;", vars)
 	switch v := vars.(type) {
 	case string:
@@ -98,7 +96,7 @@ func (cf *Config) setVars(vars interface{}) error {
 	return nil
 }
 
-func (cf *Config) setOut(out interface{}) error {
+func (cf *TConfig) setOut(out interface{}) error {
 	//DEBUG("out.type:::", reflect.TypeOf(out))
 	switch v := out.(type) {
 	case string:
@@ -119,7 +117,7 @@ func (cf *Config) setOut(out interface{}) error {
 	return nil
 }
 
-func (cf *Config) GetConfigs() (err error) {
+func (cf *TConfig) GetConfigs() (err error) {
 	//DEBUG("cf.GetConfigs::::::::::::;;", cf.tl, " : ", cf.vars, " : ", cf.out)
 	switch v := cf.out.(type) {
 	case string:
@@ -173,7 +171,7 @@ func (cf *Config) GetConfigs() (err error) {
 	return nil
 }
 
-func (cf *Config) table2yaml() error {
+func (cf *TConfig) table2yaml() error {
 
 	return nil
 }

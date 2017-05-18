@@ -14,10 +14,10 @@ function tomcat:new(o)
         instancepath="/usr/tomcat-instance/",
         jdk=jdk:new(
             {
-                filename = "jdk-8u111-linux-x64.tar.gz",
-                version="jdk1.8.0_111",
+                filename = "jdk-8u121-linux-x64.tar.gz",
+                version="jdk1.8.0_121",
                 path = "/usr/local/",
-            })
+            }),
     }
 
     setmetatable(o, self)
@@ -35,6 +35,18 @@ function tomcat:installed(path)
     end
 end
 
+function tomcat:addtestjsp(instance)
+    Cmd("ls ".. instance.CATALINA_BASE.."/webapps/ROOT/index.jsp")
+    if ERR.Code ~= 0 then
+        Cmd{
+            "mkdir -p "..instance.CATALINA_BASE.."/webapps/ROOT",
+            [[echo "]]..HOST.Ip..[[:::<%=session.getId() %>" >]]..instance.CATALINA_BASE.."/webapps/ROOT/index.jsp"
+        }
+    else
+        print("index.jsp文件已经存在.")
+    end
+end
+
 function tomcat:adduser(username, instancepath)
     Cmd{
         "id "..username.." || useradd -s /sbin/nologin -d "..instancepath.."/temp "..username,
@@ -45,7 +57,7 @@ end
 
 function tomcat:install()
     -- setup jdk
-    self.jdk:install()
+    self.jdk:binInstall()
 
     if not self:installed(self.CATALINA_HOME) then
         -- 上传文件
@@ -138,8 +150,10 @@ status() {
         getPID
         if [[ "${PID}X" == "X" ]]; then
             echo "tomcat is not running!"
+            exit 3
         else
             echo "tomcat is running!"
+            exit 0
         fi
 }
 
@@ -190,9 +204,10 @@ function tomcat:addinstance(instance)
             -- 创建实例目录
             "mkdir -p "..instance.CATALINA_BASE,
             -- 创建实例所需的子目录
-            "cd "..instance.CATALINA_BASE.." && mkdir common logs temp server shared webapps work",
+            "cd "..instance.CATALINA_BASE.." && mkdir common logs temp server shared webapps work lib",
             -- 拷贝配置文件
             "cp -a "..self.CATALINA_HOME.."/conf "..instance.CATALINA_BASE,
+            "iptables -I INPUT -p tcp -d "..HOST.Ip.." --dport "..instance.connectorport.." -j ACCEPT",
         }
 
         -- 配置实例
@@ -215,5 +230,48 @@ function tomcat:setinstance(instance)
                 instance.CATALINA_BASE..[====[/conf/server.xml]====],
     }
 end
+
+function tomcat:start(instance)
+    Cmd("service "..instance.name.." status")
+    if ERR.Code ~= 0 then
+        Cmd{
+            "service "..instance.name.." start",
+        }
+    end
+end
+
+
+
+function tomcat:sessionbyredis(redisinfo, instance)
+    -- 添加jar到tomcat_base/lib
+    -- [[ commons-pool2-2.2.jar  jedis-2.5.2.jar	tomcat-redis-session-manager-2.0.0.jar
+    if instance.CATALINA_BASE then
+        UploadDir(redisinfo.jar_lib_path, instance.CATALINA_BASE.."/lib/")
+    end
+    --]]
+
+    -- 修改conf/context.xml
+    local rt, str = HOST:ReadFile(instance.CATALINA_BASE.."/conf/context.xml")
+    if rt == nil then
+        local x = XML()
+        local el, err = x:LoadByStr(str)
+        if err == nil then
+            Merge(el, redisinfo.conf)
+            rt = HOST:WriteFile(instance.CATALINA_BASE.."/conf/context.xml", el:SyncToXml())
+            if rt then
+                print("写入文件失败."..instance.CATALINA_BASE.."/conf/context.xml")
+                os.exit(-1)
+            end
+        else
+            print("解析xml文件失败."..instance.CATALINA_BASE.."/conf/context.xml")
+            os.exit(-1)
+        end
+    else
+        print("读取文件失败."..instance.CATALINA_BASE.."/conf/context.xml")
+        os.exit(-1)
+    end
+end
+
+
 
 

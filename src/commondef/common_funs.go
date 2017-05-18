@@ -7,6 +7,11 @@ import (
 	"layeh.com/gopher-luar"
 	"reflect"
 	"time"
+	"regexp"
+	"strings"
+	. "logdebug"
+	. "convert"
+	"configs"
 )
 
 func TimeOut(fun func(), timeout int) bool {
@@ -42,7 +47,7 @@ func luaGeterr(err error) string {
 
 func LuaDeepCopy(L *lua.LState, src *lua.LTable)(dst *lua.LTable){
 	dst = L.NewTable()
-	var i int;
+	i :=1 ;
 
 	src.ForEach(func(key, value lua.LValue) {
 		if lt, ok := value.(*lua.LTable); ok {
@@ -61,82 +66,62 @@ func LuaDeepCopy(L *lua.LState, src *lua.LTable)(dst *lua.LTable){
 	return dst
 }
 
-//参考:https://github.com/yuin/gluamapper/blob/master/gluamapper.go
-func Lua2goValue(lv lua.LValue) interface{} {
-	switch v := lv.(type) {
-	case *lua.LNilType:
-		return nil
-	case lua.LBool:
-		return bool(v)
-	case lua.LString:
-		return string(v)
-	case lua.LNumber:
-		return float64(v)
-	case *lua.LTable:
-		maxn := v.MaxN()
-		if maxn == 0 { // table
-			ret := make(map[interface{}]interface{})
-			v.ForEach(func(key, value lua.LValue) {
-				keystr := Lua2goValue(key)
-				ret[keystr] = Lua2goValue(value)
-			})
-			return ret
-		} else { // array
-			ret := make([]interface{}, 0, maxn)
-			for i := 1; i <= maxn; i++ {
-				ret = append(ret, Lua2goValue(v.RawGetInt(i)))
-			}
-			return ret
+func StrMatch(pattern string, srcstr string) (bool, [][]string) {
+	r, err := regexp.Compile(pattern)
+	if nil == err {
+		ss := r.FindAllStringSubmatch(srcstr, -1)
+		if len(ss)>0 {
+			return true, ss
 		}
-	default:
-		return v
+	}else{
+		ERROR(pattern, "错误：", err)
 	}
+	return false, nil
 }
 
-func ConverToMsi(src interface{}) (dst interface{}, err error) {
-	//DEBUG(reflect.TypeOf(src), "::::::::", src)
-	switch rv := src.(type) {
-	case map[interface{}]interface{}:
-		tMsi := make(map[string]interface{})
-		for k, v := range rv {
-			if sk, ok := k.(string); ok {
-				tMsi[sk], err = ConverToMsi(v)
-			} else {
-				return nil, fmt.Errorf("%v not a string", k)
-			}
-		}
-		return tMsi, nil
-	case []interface{}:
-		var tsi []interface{}
-		for _, v := range rv {
-			if t, err := ConverToMsi(v); err == nil {
-				tsi = append(tsi, t)
-			}
-		}
-		return tsi, nil
+func StrSplitSpace(srcstr string) ([]string){
+	return strings.Fields(srcstr)
+}
 
-	case map[string]interface{}:
-		tMsi := make(map[string]interface{})
-		for k, v := range rv {
-			tMsi[k], err = ConverToMsi(v)
-		}
-		return tMsi, nil
-	case interface{}:
-		dst = src
-		return dst, nil
+/*TemplConfig
+根据模板生成配置文件
+ */
+func TemplConfig(tpl, vars, out interface{}) (err error) {
+	//      DEBUG("====================:::", reflect.TypeOf(vars))
+	if vv, ok := vars.(*lua.LTable); ok {
+		vars = Lua2goValue(vv)
 	}
 
-	return nil, nil
+	var nc *configs.TConfig
+	if nc, err = configs.NewTemplConfig(tpl, vars, out, "TemplConfig"); err != nil {
+		return
+	} else {
+		err = nc.GetConfigs()
+		if err != nil {
+			return
+		}
+	}
+	DEBUG("-->TemplConfig==>", err)
+	return
 }
 
 func Register(L *lua.LState) {
+	//DEBUG INFO PRINTERR
 	L.SetGlobal("DEBUG", luar.New(L, luaDebug))
 	L.SetGlobal("INFO", luar.New(L, luaInfo))
+	L.SetGlobal("PRINTERR", luar.New(L, luaGeterr))
+	//sleep
 	L.SetGlobal("SLEEP", luar.New(L, Sleep))
-	L.SetGlobal("printerr", luar.New(L, luaGeterr))
-
-	//
+	//strmatch
+	L.SetGlobal("STRMATCH", luar.New(L, StrMatch))
+	//buffer
 	buf := bytes.Buffer{}
 	L.SetGlobal("BUFFER", luar.New(L, buf))
 	L.SetGlobal("BUFFER", luar.NewType(L, buf))
+	//templconfig
+	L.SetGlobal("TEMPLCONFIG", luar.New(L, TemplConfig))
+	//xml
+	XML := configs.XML{}
+	L.SetGlobal("XML", luar.New(L, XML))
+	L.SetGlobal("XML", luar.NewType(L, XML))
 }

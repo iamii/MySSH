@@ -79,7 +79,7 @@ function filebeat:addconf(filename)
     if ERR.Code == 2 then
         local template
         local out = BUFFER()
-        HOST:TemplConfig(template, self.templ, out)
+        TEMPLCONFIG(template, self.templ, out)
         Cmd([[echo -e "]]..out:String()..[[" > ]]..self.pdir..self.version.."/"..filename)
     else
         print("filebeat addconf ", filename, "已经存在")

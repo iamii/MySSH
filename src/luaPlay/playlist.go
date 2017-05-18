@@ -2,8 +2,8 @@ package luaPlay
 
 import (
 	"SSH"
+	. "logdebug"
 	. "commondef"
-	//cm "commondef"
 	"errors"
 	"github.com/yuin/gopher-lua"
 	"layeh.com/gopher-luar"

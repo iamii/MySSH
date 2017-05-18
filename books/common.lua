@@ -2,6 +2,7 @@ ERR = nil
 HOST = HOST
 PLAYLISTINFO = PlayListInfo
 
+
 -- 创建执行列表
 function PL_RUN(servers, golbal, TIMEOUT, GO_WITH_ALL_DONE, WAIT_CONN_INIT)
     -- 总超时时间
@@ -60,6 +61,18 @@ function Upload(lfile, rfile)
     return ERR
 end
 
+-- 上传目录下所有文件
+function UploadDir(srcdir, dstdir)
+    local files = io.popen("dir ".. srcdir, "r")
+    if files ~= nil then
+        for file in files:lines() do
+            for _, v in pairs(StrMatch([[(?:\s+|^)(\S*)]], file)) do
+                DEBUG("upload file ", srcdir ..v, dstdir..v)
+                Upload(srcdir ..v, dstdir..v)
+            end
+        end
+    end
+end
 -- 下载单文件
 function Download(rfile, lfile)
     ERR = HOST:GetFile(rfile, lfile)
@@ -77,7 +90,7 @@ function string.split(str, delimiter)
     end
 
     local result = {}
-    for match in (str..delimiter):gmatch("(.-)"..delimiter) do
+    for match in (str..delimiter):gmatch("(.-)%"..delimiter) do
         table.insert(result, match)
     end
     return result
@@ -101,7 +114,12 @@ function Setfkv(file, key, value, add, delimiter, comment)
 
     if ERR.Code == 0 and add == false then
         -- Cmd([=[sed -i 's,^]=]..comment..[=[*[[:space:]]*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
-        Cmd([=[sed -i 's,^]=]..comment..[=[*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
+        if comment ~= "" then
+            Cmd([=[sed -i 's,^]=]..comment..[=[*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
+        else
+            Cmd([=[sed -i 's,^\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
+        end
+
     elseif add == true then
         print(key, value, file)
         Cmd("echo "..key.." "..value.." >> "..file)
@@ -130,7 +148,11 @@ end
 -- 配置epel
 function InstallEPEL()
 -- install epel
-Cmd("yum install -y epel-release")
+Cmd{
+    "yum install -y ntpdate",
+    "ntpdate ntp.ubuntu.com",
+    "yum install -y epel-release",
+}
 --[[
     local epel_repo = {
     [==[
@@ -199,7 +221,6 @@ XtfLk0W5Ab9pd7tKDR6QHI7rgHXfCopRnZ2VVQ==
     }
     --]]
 end
-
 -- 随机数生成
 function Random(b, e)
     math.randomseed(os.time())
@@ -244,6 +265,7 @@ function Table2conf (ctTable, pident)
 -- tablejoin
 function TableJoin(dstTable, src)
     -- [[
+    --test(dstTable)
     if type(src) == "table" then
         for k, v in pairs(src) do
             -- 如果目标表中已经存在key，则继续比对
@@ -268,8 +290,37 @@ function TableJoin(dstTable, src)
 
 -- table2ini
 function Table2ini(srcT, pre)
-    local coverFun = function(dstT, srcT, pre)
+    local array_copy = function(t)
         if type(srcT) == "table" then
+            for k, v in pairs(t) do
+                if type(k) ~= "number" then
+                    return false
+                end
+
+                if type(v) == "table" then
+                    for sk, _ in pairs(v) do
+                        if type(sk) ~= "number" then
+                            return false
+                        end
+                    end
+                else
+                    if v == "下面的真不是段子了" then
+                        return true
+                    else
+                        return false
+                    end
+                end
+
+            end
+        else
+            return false
+        end
+    end
+    local coverFun = function(dstT, srcT, pre)
+        local f = array_copy(srcT)
+
+        if type(srcT) == "table" and not f then
+            --if type(srcT) == "table" and table.getn(srcT) ~= table.maxn(srcT) then
             for k, v in pairs(srcT) do
                 if type(v) == "table" then
                     if pre and pre ~= "" then
@@ -282,12 +333,33 @@ function Table2ini(srcT, pre)
                         if not dstT["["..pre.."]"] then
                             dstT["["..pre.."]"] = {}
                         end
-                        table.insert(dstT["["..pre.."]"], k.."="..v)
+                        if type(k) ~= "number" then
+                            table.insert(dstT["["..pre.."]"], k.."="..v)
+                        else
+                            table.insert(dstT["["..pre.."]"], v)
+                        end
                     else
                         print("没有获取到pre,可能是section未配置正确")
                         return
                     end
                 end
+            end
+        else --如果列表的第一项是“下面的真不是段子了”，说明是重复键名
+            if pre then
+                local tpre = pre:match("(.+)%..*")
+                local tkey = pre:match(".+%.(.*)")
+                -- [[
+                if not dstT["["..tpre.."]"] then
+                    dstT["["..tpre.."]"] = {}
+                end
+                --]]
+                for i = 2, #srcT do
+                    local v = srcT[i]
+                    if type(v) ~= "table" then
+                        table.insert(dstT["["..tpre.."]"], tkey.."="..v)
+                    end
+                end
+                --]]
             end
         end
     end
@@ -307,3 +379,58 @@ function Table2ini(srcT, pre)
     return ini
 end
 
+--字符串模式匹配
+function StrMatch(pattern, string)
+    local b, ss = STRMATCH(pattern, string)
+    local t = {}
+    if b == true then
+        for _, v in ss() do
+            if #v==2 then
+                table.insert(t, v[2])
+            else
+                table.insert(t, v)
+            end
+        end
+    else
+        print("字符串模式匹配失败。")
+    end
+    return t
+end
+
+--将lua table合并到xml中。
+function Merge(elem, i)
+    if elem == nil then
+        return
+    end
+
+    if type(i) == "table" then
+        for k, v in pairs(i) do
+            -- 如果不是___attr，说明是子节点
+            if k ~= "___attr" then
+                local node = elem:Node(k)
+                -- 如果节点存在
+                if node then
+                    -- DEBUG(node:Name(), "存在")
+                else
+                    -- 节点不存在
+                    -- DEBUG(k, "不存在")
+                    if type(v) ~= "table" then
+                        elem:AddNodeByString("<"..k..">"..v.."</"..k..">")
+                    else
+                        elem:AddNodeByString("<"..k.."></"..k..">")
+                    end
+                end
+                -- 继续比对子节点
+                Merge(elem:Node(k), v)
+            else
+                -- 遍历/添加属性
+                if type(v) == "table" then
+                    for sk, sv in pairs(v) do
+                        elem:AddAttr(sk, sv)
+                    end
+                end
+            end
+        end
+    end
+    return elem
+end

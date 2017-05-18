@@ -23,7 +23,7 @@ local vars = {
 
 local out = BUFFER()
 
-HOST:TemplConfig(template, vars, out)
+TEMPLCONFIG(template, vars, out)
 
 -- print(out)
 
