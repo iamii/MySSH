@@ -8,13 +8,13 @@ require([[books/jdk/jdk]])
 
 local t = tomcat:new(
     {
-        filename="apache-tomcat-7.0.77.tar.gz",
+        filename="apache-tomcat-7.0.79.tar.gz",
         CATALINA_HOME="/usr/local/tomcat",
         CATALINA_BASE="/usr/local/tomcat",
         jdk=jdk:new(
             {
-                filename = "jdk-8u121-linux-x64.tar.gz",
-                version="jdk1.8.0_121",
+                filename = "jdk-8u131-linux-x64.tar.gz",
+                version="jdk1.8.0_131",
                 path = "/usr/local/",
             })
     })
@@ -114,7 +114,7 @@ local redisinfo = {
 }
 
 
-t:sessionbyredis(redisinfo, instance1)
+--t:sessionbyredis(redisinfo, instance1)
 
 
 t:start(instance1)
@@ -127,5 +127,5 @@ local instance2 = {
     serverport = "8007",
 }
 t:addinstance(instance2)
-HOST:Wait({src="redis1"})
+--HOST:Wait({src="redis1"})
 t:start(instance2)

@@ -6,9 +6,9 @@ import (
 	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
+	. "logdebug"
 	"os"
 	"text/template"
-	. "logdebug"
 )
 
 var tplFuncs = template.FuncMap{

@@ -14,7 +14,7 @@ WAIT_CONN_INIT = false
 -- 服务器列表定义
 -- 服务器列表定义
 SERVERS = {
-    test1 = { ip = "192.168.2.200", port = 22, user = "root", auth = "pw", passwd= "123", keyfile = "test", timeout = 2, st="file", script = "./books/tomcat/tomcatsetup.lua", },
+    test1 = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", keyfile = "test", timeout = 2, st="file", script = "./books/tomcat/tomcatsetup.lua", },
 }
 
 -- 创建playlist

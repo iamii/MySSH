@@ -9,8 +9,7 @@ tomcat ={}
 function tomcat:new(o)
     o = o or {
         filename="apache-tomcat-7.0.75.tar.gz",
-        CATALINA_HOME="/usr/local/tomcat",
-        CATALINA_BASE="/opt/tomcat-instance/test.com",
+        CATALINA_HOME="/usr/local/tomcat", CATALINA_BASE="/opt/tomcat-instance/test.com",
         instancepath="/usr/tomcat-instance/",
         jdk=jdk:new(
             {
@@ -49,9 +48,7 @@ end
 
 function tomcat:adduser(username, instancepath)
     Cmd{
-        "id "..username.." || useradd -s /sbin/nologin -d "..instancepath.."/temp "..username,
-            "chown -h "..username..":"..username.." "..instancepath,
-        "chown -R "..username..":"..username.." "..instancepath.."/"
+        "id "..username.." || useradd -s /sbin/nologin -M -d "..instancepath.."/temp "..username,
     }
 end
 
@@ -107,7 +104,11 @@ export JAVA_OPTS="-server -Xms512m -Xmx512m"
 ####################################################################################
 getPID() {
 #PID=$(ps -ef | grep -v 'grep' | grep "${CATALINA_HOME}/conf/logging.properties" | awk \047{print $2}\047)
-PID=$(ps -ef | grep -v 'grep' | grep "${CATALINA_BASE}" | awk \047{print $2}\047)
+PID=$(ps -ef | grep -v 'grep' | grep "${CATALINA_BASE}/conf/logging.properties" | awk \047{print $2}\047)
+}
+
+getUSER() {
+    user=$(whoami)
 }
 
 start() {
@@ -116,7 +117,14 @@ start() {
             echo "tomcat is already running"
         else
             echo "tomcat is starting"
-            sudo -E -u ]====]..instance.name..[====[ ${CATALINA_HOME}/bin/catalina.sh start
+            getUSER
+            if [[  $user = "root" ]]; then
+                cd ${CATALINA_BASE}/temp
+                sudo -E -u ]====]..instance.name..[====[ ${CATALINA_HOME}/bin/catalina.sh start
+            else
+                cd ${CATALINA_BASE}/temp
+                ${CATALINA_HOME}/bin/catalina.sh start
+            fi
             #tailf ${CATALINA_HOME}/logs/catalina.out
         fi
 }
@@ -140,7 +148,13 @@ restart() {
         else
             kill -9 $PID
             echo "tomcat is stop"
-            sudo -E -u ]====]..instance.name..[====[ ${CATALINA_HOME}/bin/catalina.sh start
+            if [[  $user = "root" ]]; then
+                cd ${CATALINA_BASE}/temp
+                sudo -E -u ]====]..instance.name..[====[ ${CATALINA_HOME}/bin/catalina.sh start
+            else
+                cd ${CATALINA_BASE}/temp
+                ${CATALINA_HOME}/bin/catalina.sh start
+            fi
             echo "tomcat is starting"
             #tailf ${CATALINA_HOME}/logs/catalina.out
         fi
@@ -187,6 +201,7 @@ esac
         Cmd{
             [====[echo -e ']====].. servicescript[1]..[====[' > /etc/init.d/]====].. instance.name,
             "chmod u+x /etc/init.d/".. instance.name,
+            "chown "..instance.name..":"..instance.name.." /etc/init.d/".. instance.name,
         }
     end
 end
@@ -200,20 +215,30 @@ function tomcat:addinstance(instance)
     if self:installed(instance.CATALINA_BASE) then
         print("实例目录已存在。")
     else
+        -- 添加用户
+        self:adduser(instance.name, instance.CATALINA_BASE)
         Cmd{
             -- 创建实例目录
             "mkdir -p "..instance.CATALINA_BASE,
             -- 创建实例所需的子目录
             "cd "..instance.CATALINA_BASE.." && mkdir common logs temp server shared webapps work lib",
+            -- 目录temp logs work可以给运行用户权限
+            -- ROOT下的子目录，根据应用自身情况确定
+            -- 其它目录权限只ROOT可读写
+            "chown "..instance.name..":"..instance.name.." "
+                    ..instance.CATALINA_BASE.."/temp "
+                    ..instance.CATALINA_BASE.."/logs "
+                    ..instance.CATALINA_BASE.."/work ",
             -- 拷贝配置文件
             "cp -a "..self.CATALINA_HOME.."/conf "..instance.CATALINA_BASE,
+            "chmod -R a+r "..instance.CATALINA_BASE.."/conf",
+            -- 添加iptables规则
             "iptables -I INPUT -p tcp -d "..HOST.Ip.." --dport "..instance.connectorport.." -j ACCEPT",
         }
 
         -- 配置实例
         self:setinstance(instance)
-        -- 添加用户
-        self:adduser(instance.name, instance.CATALINA_BASE)
+
         -- 添加服务脚本
         self:addserverscript(self.CATALINA_HOME, instance)
     end
@@ -251,14 +276,14 @@ function tomcat:sessionbyredis(redisinfo, instance)
     --]]
 
     -- 修改conf/context.xml
-    local rt, str = HOST:ReadFile(instance.CATALINA_BASE.."/conf/context.xml")
-    if rt == nil then
+    local err, str = HOST:ReadFile(instance.CATALINA_BASE.."/conf/context.xml")
+    if err == nil then
         local x = XML()
         local el, err = x:LoadByStr(str)
         if err == nil then
             Merge(el, redisinfo.conf)
-            rt = HOST:WriteFile(instance.CATALINA_BASE.."/conf/context.xml", el:SyncToXml())
-            if rt then
+            err = HOST:WriteFile(instance.CATALINA_BASE.."/conf/context.xml", el:SyncToXml())
+            if err then
                 print("写入文件失败."..instance.CATALINA_BASE.."/conf/context.xml")
                 os.exit(-1)
             end

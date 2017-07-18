@@ -1,9 +1,9 @@
 package main
 
 import (
-	. "logdebug"
 	"flag"
 	"github.com/yuin/gopher-lua"
+	. "logdebug"
 	"luaPlay"
 )
 
@@ -17,7 +17,6 @@ func main() {
 			ERROR("Get panic: ", r)
 		}
 	}()
-
 
 	luafile := flag.String("l", "../books/main.lua", "TO play lua")
 	debug := flag.Bool("d", false, "Show debug info")

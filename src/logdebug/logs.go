@@ -1,4 +1,4 @@
-package commondef
+package logs
 
 import (
 	"github.com/cxr29/log"

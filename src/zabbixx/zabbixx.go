@@ -1,13 +1,13 @@
 package zabbixx
 
 import (
+	. "convert"
 	"github.com/AlekSi/zabbix"
 	"github.com/pkg/errors"
 	"github.com/yuin/gopher-lua"
-	"reflect"
 	"layeh.com/gopher-luar"
 	. "logdebug"
-	. "convert"
+	"reflect"
 )
 
 type API struct {

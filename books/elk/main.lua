@@ -10,10 +10,8 @@ WAIT_CONN_INIT = false
 SERVERS = {
     elkserver = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123",
         timeout = 2, st="file", script = "./books/elk/install_elk.lua", },
-    --[[
     fbclient = { ip = "192.168.18.201", port = 22, user = "root", auth = "pw", passwd= "123",
         timeout = 2, st="file", script = "./books/elk/install_filebeat.lua", },
-        --]]
     mbclient = { ip = "192.168.18.201", port = 22, user = "root", auth = "pw", passwd= "123",
         timeout = 2, st="file", script = "./books/elk/install_metricbeat.lua", },
 }

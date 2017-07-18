@@ -3,11 +3,12 @@
 require("books/common")
 require("books/elk/metricbeat")
 
-Cmd("yum -y install ntpdate && ntpdate ntp.ubuntu.com ")
+
+Ntpdate()
 
 local logstash_ip
 
-local mb = metricbeat:new({pdir="/opt/", version="metricbeat-5.2.2-linux-x86_64"})
+local mb = metricbeat:new({pdir="/opt/", version="metricbeat-5.4.1-linux-x86_64"})
 if not mb:installed() then
     mb:binInstall()
 end

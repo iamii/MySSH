@@ -33,13 +33,15 @@ SERVERS = {
     -- [[
     zabbixhost = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
         st="file", script = "./books/zabbix/install_zabbix.lua", },
-    mysqlhost = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
+     mysqlhost = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
         st="file", script = "./books/zabbix/install_mysql.lua", },
+    --]]
     nginxhost = { ip = "192.168.18.200", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
         st="file", script = "./books/zabbix/install_nginx_php.lua", },
-        --]]
+    -- [[
     agenthost={ ip = "192.168.18.201", port = 22, user = "root", auth = "pw", passwd= "123", timeout = 2,
         st="file", script = "./books/zabbix/custem_item_test.lua", },
+        --]]
 }
 
 -- 创建playlist

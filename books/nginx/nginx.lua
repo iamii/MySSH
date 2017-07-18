@@ -210,9 +210,8 @@ function nginx:yumInstall()
         InstallEPEL()
 
         Cmd("yum install nginx -y")
-        -- [=[echo -e "]=]..self:getconf(self.conf["nginx.conf"])..[=[" > /etc/nginx/nginx.conf]=],
         for k, v in pairs(self.conf) do
-            Cmd([=[echo "]=]..self:getconf(v)..[=[" > /etc/nginx/]=]..k)
+            HOST:WriteFile("/etc/nginx/"..k, self:getconf(v))
         end
 
 

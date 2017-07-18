@@ -2,9 +2,7 @@
 
 require ("books/zabbix/zabbix")
 
-local msg = HOST:Wait({src="playlist"})
-
-local zabbixcfg = msg.Msg.info
+local zabbixcfg = PLAYLISTINFO
 local z = zabbix:new(zabbixcfg)
 -- [[
 HOST:Wait({src="mysqlhost"})

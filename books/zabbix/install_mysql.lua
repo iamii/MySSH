@@ -6,12 +6,11 @@
 -- 安装配置mysql
 require ("books/mysql/mysql")
 
-local msg = HOST:Wait({src="playlist"})
-
-local zabbix = msg.Msg.info
+local zabbix = PLAYLISTINFO
 
 local m = mysql:new(zabbix.mysqlcfg)
 m:yumInstall()
+m:start()
 m:secure_installation()
 
 local t = zabbix.mysqlcfg.host

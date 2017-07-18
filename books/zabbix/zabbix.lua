@@ -333,7 +333,7 @@ global \$DB;
 end
 
 function zabbix:server_conf(key, value)
-    Setfkv("/etc/zabbix/zabbix_server.conf", key, value, false, "=", "#")
+    Setfkv("/etc/zabbix/zabbix_server.conf", key, value, false, "=", "# ")
 end
 
 function zabbix:startServer()

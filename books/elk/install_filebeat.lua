@@ -6,12 +6,13 @@ local n=nginx:new()
 n:yumInstall()
 -- -------------------
 require("books/common")
-Cmd("yum -y install ntpdate && ntpdate ntp.ubuntu.com ")
 require("books/elk/filebeat")
+
+Ntpdate()
 
 local logstash_ip
 
-local fb = filebeat:new({pdir="/opt/", version="filebeat-5.2.2-linux-x86_64"})
+local fb = filebeat:new({pdir="/opt/", version="filebeat-5.4.1-linux-x86_64"})
 if not fb:installed() then
     fb:binInstall()
 end

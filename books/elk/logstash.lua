@@ -62,7 +62,7 @@ end
 
 function logstash:addpattern(name, pattern)
     -- test for nginx access log
-    local patternsPath = "/opt/"..self.version.."/vendor/bundle/jruby/1.9/gems/logstash-patterns-core-4.0.2/patterns/"
+    local patternsPath = "/opt/"..self.version.."/vendor/bundle/jruby/1.9/gems/logstash-patterns-core-4.1.0/patterns/"
 
     Cmd("ls "..patternsPath.. name)
 
@@ -87,7 +87,9 @@ function logstash:runconf(confile)
     if ERR.Code == 1 then
         local ia_in = {
             "cd "..self.pdir..self.version.."/bin","\n",
-            ". /etc/profile && nohup ./logstash -f ../conf/"..confile.." &", "\n",
+            "mkdir "..self.pdir..self.version.."/data/"..confile..
+                    " && . /etc/profile && nohup ./logstash --path.data ../data/"
+                    ..confile.." -f ../conf/"..confile.." &", "\n",
         }
         Ia(ia_in, 30)
     else

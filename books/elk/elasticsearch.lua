@@ -8,6 +8,13 @@ function elasticsearch:new(o)
         return nil
     end
 
+    Cmd([=[free -g | grep "Mem:" | awk -F ' ' '{if ($2>=4){print "gt"}}']=])
+
+    if ERR.Msg ~= "gt\n" then
+        print "安装elasticearch内存必须大于4G。"
+        exit(-1)
+    end
+
     setmetatable(o, self)
     self.__index = self
     return o

@@ -6,20 +6,20 @@
 --
 require("books/common")
 
-Cmd("yum -y install ntpdate && ntpdate ntp.ubuntu.com ")
-
 require([[books/elk/elasticsearch]])
 require([[books/elk/logstash]])
 require([[books/elk/kibana]])
 
+Ntpdate()
+
 local logstash_ip = HOST.Ip
 -- [====[
-local e = elasticsearch:new({pdir="/opt/", version="elasticsearch-5.2.2"})
+local e = elasticsearch:new({pdir="/opt/", version="elasticsearch-5.4.1"})
 if not e:binInstall() then
     e:start()
 end
 
-local k = kibana:new({pdir="/opt/", version="kibana-5.2.2-linux-x86_64"})
+local k = kibana:new({pdir="/opt/", version="kibana-5.4.1-linux-x86_64"})
 if not k:binInstall() then
     k:run()
     k:install_nginx()
@@ -78,7 +78,7 @@ output	{
 }
 ]]
 }
-local l = logstash:new({pdir = "/opt/", version = "logstash-5.2.2"})
+local l = logstash:new({pdir = "/opt/", version = "logstash-5.4.1"})
 if not l:binInstall() then
     l:addcert()
     l:addpattern("nginx", nginx_log.pattern)
@@ -93,9 +93,10 @@ if not l:binInstall() then
     Cmd("iptables -I INPUT 1 -p tcp --dport 5044 -m state --state NEW -j ACCEPT")
     -- import_dashboards
     local lpath = GetLocalPath()
+    local bdfile = "beats-dashboards-5.4.1.zip"
     Upload(lpath.."import_dashboards", l.pdir.."import_dashboards")
-    Upload(lpath.."beats-dashboards-5.2.2.zip", l.pdir.."beats-dashboards-5.2.2.zip")
-    Cmd{"chmod u+x "..l.pdir.."/import_dashboards && "..l.pdir.."/import_dashboards -file "..l.pdir.."beats-dashboards-5.2.2.zip"}
+    Upload(lpath..bdfile, l.pdir..bdfile)
+    Cmd{"chmod u+x "..l.pdir.."/import_dashboards && "..l.pdir.."/import_dashboards -file "..l.pdir..bdfile}
 end
 
 l:runconf("test_nginx")

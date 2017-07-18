@@ -11,8 +11,8 @@ jdk ={}
 
 function jdk:new(o)
     o = o or {
-        filename = "jdk-8u121-linux-x64.tar.gz",
-        version="jdk1.8.0_121",
+        filename = "jdk-8u131-linux-x64.tar.gz",
+        version="jdk1.8.0_131",
         path = "/usr/local/"
     }
     setmetatable(o, self)

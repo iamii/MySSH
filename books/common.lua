@@ -96,7 +96,7 @@ function string.split(str, delimiter)
     return result
 end
 
--- 设置配置文件中 key value 形式的值
+-- 设置配置文件中 key value 形式的值 -- add有问题
 function Setfkv(file, key, value, add, delimiter, comment)
     if not delimiter then
         delimiter = "[[:space:]]"
@@ -106,14 +106,11 @@ function Setfkv(file, key, value, add, delimiter, comment)
 
     comment = comment or ""
 
-    -- print("---------------------", key, value, add, delimiter, comment)
-
     local grepstr = [==[grep -E '^]==]..comment..[==[?[[:space:]]?]==]..key..delimiter..[==[' ]==]..file
 
     Cmd(grepstr)
 
     if ERR.Code == 0 and add == false then
-        -- Cmd([=[sed -i 's,^]=]..comment..[=[*[[:space:]]*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
         if comment ~= "" then
             Cmd([=[sed -i 's,^]=]..comment..[=[*\(]=]..key..delimiter..[=[\).*$,\1 ]=]..value.. [=[,' ]=]..file)
         else
@@ -122,7 +119,7 @@ function Setfkv(file, key, value, add, delimiter, comment)
 
     elseif add == true then
         print(key, value, file)
-        Cmd("echo "..key.." "..value.." >> "..file)
+        Cmd("echo "..key..delimiter..value.." >> "..file)
     end
     return ERR
 end
@@ -145,12 +142,20 @@ function GetLinuxVersion()
     return {dis=d, ker=k}
 end
 
+function Ntpdate(server)
+   server = server or "ntp.ubuntu.com"
+    Cmd {
+        "yum install -y ntpdate",
+        "ntpdate ntp.ubuntu.com",
+    }
+
+end
+
 -- 配置epel
 function InstallEPEL()
 -- install epel
+Ntpdate()
 Cmd{
-    "yum install -y ntpdate",
-    "ntpdate ntp.ubuntu.com",
     "yum install -y epel-release",
 }
 --[[

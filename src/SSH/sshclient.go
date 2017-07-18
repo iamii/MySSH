@@ -18,10 +18,10 @@ import (
 	"layeh.com/gopher-luar"
 
 	. "commondef"
-	. "logdebug"
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
+	. "logdebug"
 	zx "zabbixx"
 )
 
@@ -592,7 +592,7 @@ func (msc *MySSHClient) ReadFile(fl string) (rt *Message, data string) {
 	return
 }
 
-func (msc *MySSHClient) WriteFile(fl string, data string) (*Message) {
+func (msc *MySSHClient) WriteFile(fl string, data string) *Message {
 	DEBUG("写入文件:", fl)
 	sftpClient, errNC := sftp.NewClient(msc.sc)
 	defer sftpClient.Close()

@@ -2,11 +2,11 @@ package luaPlay
 
 import (
 	"SSH"
-	. "logdebug"
 	. "commondef"
 	"errors"
 	"github.com/yuin/gopher-lua"
 	"layeh.com/gopher-luar"
+	. "logdebug"
 	"os"
 	"reflect"
 	"sync"
@@ -15,10 +15,10 @@ import (
 )
 
 type PlayList struct {
-	servers    map[string]*SSH.MySSHClient
-	timeout    int         //允许所有服务器运行脚本的最长时间
-	ch         chan *SSH.Message
-	wg         sync.WaitGroup
+	servers map[string]*SSH.MySSHClient
+	timeout int //允许所有服务器运行脚本的最长时间
+	ch      chan *SSH.Message
+	wg      sync.WaitGroup
 
 	globalinfo interface{} //保存全局信息，不行只有一开始来条广播
 }
@@ -124,15 +124,14 @@ func (pl *PlayList) gogogo(host *SSH.MySSHClient) (err error) {
 	L.SetGlobal("SubPlay", luar.New(L, sub_pl))
 	L.SetGlobal("SubPlay", luar.NewType(L, sub_pl))
 
-
 	/*
-	// 直接传递‘map',并发读（还没写）有问题
-	if lv, ok := pl.setvalue.(lua.LValue);ok{
-		L.SetGlobal("GOLBAL", lv)
-	}
+		// 直接传递‘map',并发读（还没写）有问题
+		if lv, ok := pl.setvalue.(lua.LValue);ok{
+			L.SetGlobal("GOLBAL", lv)
+		}
 	*/
-	// 第个‘并发’给重新拷贝生成个，免得并发访问问题
-	if (pl.globalinfo != nil) {
+	// 每个‘并发’给重新生成个拷贝，免得并发访问问题
+	if pl.globalinfo != nil {
 		if lv, ok := pl.globalinfo.(*lua.LTable); ok {
 			pl.globalinfo = LuaDeepCopy(L, lv)
 
